@@ -2,13 +2,15 @@ package services
 
 import (
 	"errors"
+	"fmt"
+	"log"
+	"os"
+
 	nft_proxy "github.com/alphabatem/nft-proxy"
 	"github.com/babilu-online/common/context"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
-	"log"
-	"os"
 )
 
 type SqliteService struct {
@@ -111,6 +113,5 @@ func (ds *SqliteService) error(err error) error {
 		code = 500
 	}
 
-	log.Println(code) //TODO implement
-	return err
+	return fmt.Errorf("error code %i: %v", code, err.Error())
 }

@@ -1,9 +1,9 @@
 package main
 
 import (
+	"log"
 	nft_proxy "github.com/alphabatem/nft-proxy"
 	token_metadata "github.com/gagliardetto/metaplex-go/clients/token-metadata"
-	"log"
 )
 
 type collectionLoader struct {
@@ -30,7 +30,6 @@ func main() {
 
 	l.spawnWorkers()
 
-	//TODO Get collection
 	err := l.loadCollection()
 	if err != nil {
 		panic(err)

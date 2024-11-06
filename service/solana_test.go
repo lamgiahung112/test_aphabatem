@@ -1,22 +1,25 @@
 package services
 
 import (
+	"log"
+	"os"
+	"path"
+	"testing"
+
+	nft_proxy "github.com/alphabatem/nft-proxy"
 	"github.com/gagliardetto/solana-go"
 	"github.com/joho/godotenv"
-	"log"
-	"testing"
 )
 
 func init() {
-	err := godotenv.Load("../.env")
+	err := godotenv.Load(path.Join(nft_proxy.BASE_PATH, ".env"))
 	if err != nil {
 		log.Print("Error loading .env file")
 	}
 }
 
 func TestSolanaImageService_FetchMetadata(t *testing.T) {
-
-	pk := solana.MustPublicKeyFromBase58("CJ9AXYbSUPoR95oMvWzgCV3GbG3ZubQjFUpRHN7xqAVb")
+	pk := solana.MustPublicKeyFromBase58(os.Getenv("METAPLEX_CORE_KEY"))
 
 	svc := SolanaService{}
 	svc.Start()
@@ -26,5 +29,4 @@ func TestSolanaImageService_FetchMetadata(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Logf("%+v\n", d)
-
 }

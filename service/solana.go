@@ -3,17 +3,18 @@ package services
 import (
 	ctx "context"
 	"errors"
-	nft_proxy "github.com/alphabatem/nft-proxy"
-	"github.com/alphabatem/nft-proxy/metaplex_core"
-	token_metadata "github.com/alphabatem/nft-proxy/token-metadata"
-	"github.com/alphabatem/token_2022_go"
-	"github.com/babilu-online/common/context"
-	bin "github.com/gagliardetto/binary"
-	"github.com/gagliardetto/solana-go"
-	"github.com/gagliardetto/solana-go/rpc"
 	"log"
 	"os"
 	"strings"
+
+	nft_proxy "github.com/alphabatem/nft-proxy"
+	token_metadata "github.com/alphabatem/nft-proxy/token-metadata"
+	bin "github.com/gagliardetto/binary"
+	"github.com/alphabatem/nft-proxy/metaplex_core"
+	"github.com/alphabatem/token_2022_go"
+	"github.com/babilu-online/common/context"
+	"github.com/gagliardetto/solana-go"
+	"github.com/gagliardetto/solana-go/rpc"
 )
 
 type SolanaService struct {
@@ -51,7 +52,7 @@ func (svc *SolanaService) TokenData(key solana.PublicKey) (*token_metadata.Metad
 	var mint token_2022.Mint
 
 	ata, _, _ := svc.FindTokenMetadataAddress(key, solana.TokenMetadataProgramID)
-	ataT22, _, _ := svc.FindTokenMetadataAddress(key, solana.MustPublicKeyFromBase58("META4s4fSmpkTbZoUsgC1oBnWB31vQcmnN8giPw51Zu"))
+	ataT22, _, _ := svc.FindTokenMetadataAddress(key, nft_proxy.METAPLEX_CORE)
 
 	accs, err := svc.client.GetMultipleAccountsWithOpts(ctx.TODO(), []solana.PublicKey{key, ata, ataT22}, &rpc.GetMultipleAccountsOpts{Commitment: rpc.CommitmentProcessed})
 	if err != nil {
@@ -60,8 +61,6 @@ func (svc *SolanaService) TokenData(key solana.PublicKey) (*token_metadata.Metad
 
 	var decimals uint8
 	if accs.Value[0] != nil {
-		//log.Printf("SolanaService::TokenData:%s - Owner: %s", key, accs.Value[0].Owner)
-
 		err := mint.UnmarshalWithDecoder(bin.NewBinDecoder(accs.Value[0].Data.GetBinary()))
 		if err == nil {
 			decimals = mint.Decimals
@@ -127,8 +126,8 @@ func (svc *SolanaService) decodeMintMetadata(data []byte) (*token_metadata.Metad
 	}
 
 	if exts != nil {
-		if exts.MetadataPointer != nil {
-			//TODO
+		if exts.MetadataPointer == nil {
+			return nil, errors.New("metadata is nil")
 		}
 
 		if exts.TokenMetadata != nil {
@@ -145,7 +144,7 @@ func (svc *SolanaService) decodeMintMetadata(data []byte) (*token_metadata.Metad
 		}
 	}
 
-	return nil, nil
+	return nil, errors.New("metadata extension is not defined")
 }
 
 func (svc *SolanaService) decodeMetaplexCoreMetadata(mint solana.PublicKey, data []byte) (*token_metadata.Metadata, error) {

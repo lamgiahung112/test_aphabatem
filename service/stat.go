@@ -1,9 +1,10 @@
 package services
 
 import (
+	"sync/atomic"
+
 	nft_proxy "github.com/alphabatem/nft-proxy"
 	"github.com/babilu-online/common/context"
-	"sync/atomic"
 )
 
 type StatService struct {
@@ -12,8 +13,7 @@ type StatService struct {
 	imageFilesServed uint64
 	mediaFilesServed uint64
 	requestsServed   uint64
-
-	sql *SqliteService
+	sql 			 *SqliteService
 }
 
 const STAT_SVC = "stat_svc"

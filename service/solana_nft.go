@@ -2,27 +2,28 @@ package services
 
 import (
 	"encoding/json"
-	nft_proxy "github.com/alphabatem/nft-proxy"
-	token_metadata "github.com/alphabatem/nft-proxy/token-metadata"
-	"github.com/babilu-online/common/context"
-	"github.com/gagliardetto/solana-go"
-	"gorm.io/gorm/clause"
+	"errors"
 	"io"
 	"log"
 	"net/http"
 	"strings"
 	"time"
+
+	nft_proxy "github.com/alphabatem/nft-proxy"
+	token_metadata "github.com/alphabatem/nft-proxy/token-metadata"
+	"github.com/babilu-online/common/context"
+	"github.com/gagliardetto/solana-go"
+	"gorm.io/gorm/clause"
 )
+
+const SOLANA_IMG_SVC = "solana_img_svc"
 
 type SolanaImageService struct {
 	context.DefaultService
-	sql *SqliteService
-	sol *SolanaService
-
-	http *http.Client
+	sql 	*SqliteService
+	sol 	*SolanaService
+	http 	*http.Client
 }
-
-const SOLANA_IMG_SVC = "solana_img_svc"
 
 func (svc SolanaImageService) Id() string {
 	return SOLANA_IMG_SVC
@@ -43,11 +44,11 @@ func (svc *SolanaImageService) Media(key string, skipCache bool) (*nft_proxy.Med
 		log.Printf("FetchMetadata - %s err: %s", key, err)
 		media, err = svc.FetchMetadata(key)
 		if err != nil {
-			return nil, err //Still cant get metadata
+			return nil, err
 		}
 	}
 
-	return media.Media(), nil
+	return media.GetMedia(), nil
 }
 
 func (svc *SolanaImageService) RemoveMedia(key string) error {
@@ -79,8 +80,6 @@ func (svc *SolanaImageService) _retrieveMetadata(key string) (*nft_proxy.NFTMeta
 		return nil, err
 	}
 
-	//log.Printf("TokenData retreive (%v): %+v\n", decimals, tokenData)
-
 	switch tokenData.Protocol {
 	case token_metadata.PROTOCOL_METAPLEX_CORE:
 		return &nft_proxy.NFTMetadataSimple{
@@ -91,23 +90,14 @@ func (svc *SolanaImageService) _retrieveMetadata(key string) (*nft_proxy.NFTMeta
 			UpdateAuthority: tokenData.UpdateAuthority.String(),
 		}, nil
 	default:
-		//Get file meta if possible
 		f, err := svc.retrieveFile(tokenData.Data.Uri)
 		if f != nil {
 			f.Decimals = decimals
 			f.UpdateAuthority = tokenData.UpdateAuthority.String()
 			return f, nil
 		}
-		log.Printf("(%s) retrieveFile err: %s", tokenData.Data.Uri, err)
+		return nil, errors.New("failed to retrieve metadata: " + err.Error())
 	}
-
-	//No Metadata
-	return &nft_proxy.NFTMetadataSimple{
-		Name:            strings.Trim(tokenData.Data.Name, "\x00"),
-		Decimals:        decimals,
-		Symbol:          strings.Trim(tokenData.Data.Symbol, "\x00"),
-		UpdateAuthority: tokenData.UpdateAuthority.String(),
-	}, nil
 }
 
 func (svc *SolanaImageService) retrieveFile(uri string) (*nft_proxy.NFTMetadataSimple, error) {
@@ -141,7 +131,6 @@ func (svc *SolanaImageService) cache(key string, metadata *nft_proxy.NFTMetadata
 		LocalPath: localPath,
 	}
 
-	//log.Printf("Metadata: %+v\n", metadata)
 	if metadata != nil {
 		media.Name = metadata.Name
 		media.Symbol = metadata.Symbol
@@ -161,7 +150,7 @@ func (svc *SolanaImageService) cache(key string, metadata *nft_proxy.NFTMetadata
 	}
 
 	return &media, svc.sql.Db().Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "mint"}}, // key colum
+		Columns:   []clause.Column{{Name: "mint"}},
 		UpdateAll: true,
 	}).Create(&media).Error
 }

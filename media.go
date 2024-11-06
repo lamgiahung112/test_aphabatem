@@ -22,6 +22,8 @@ type IMedia struct {
 }
 
 type SolanaMedia struct{
+	_ IMedia
+
 	Media
 }
 

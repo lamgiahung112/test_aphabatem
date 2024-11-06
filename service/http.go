@@ -3,16 +3,19 @@ package services
 import (
 	"errors"
 	"fmt"
-	"github.com/babilu-online/common/context"
-	"github.com/gin-contrib/cors"
-	"github.com/gin-gonic/gin"
 	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
 	"os"
+	"path"
 	"strconv"
 	"time"
+
+	nft_proxy "github.com/alphabatem/nft-proxy"
+	"github.com/babilu-online/common/context"
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
 )
 
 type HttpService struct {
@@ -21,7 +24,6 @@ type HttpService struct {
 	BaseURL 		string
 	Port    		int
 	defaultImage	[]byte
-
 	imgSvc  		*ImageService
 	statSvc 		*StatService
 }
@@ -42,7 +44,7 @@ func (svc *HttpService) Configure(ctx *context.Context) error {
 
 	svc.Port = portFlag
 
-	svc.defaultImage, err = ioutil.ReadFile("./docs/failed_image.jpg")
+	svc.defaultImage, err = ioutil.ReadFile(path.Join(nft_proxy.BASE_PATH, "/docs/failed_image.jpg"))
 	if err != nil {
 		return err
 	}
@@ -72,18 +74,10 @@ func (svc *HttpService) Start() error {
 
 	v1.GET("tokens/:id", svc.showNFT)
 	v1.GET("tokens/:id/image", svc.showNFTImage)
-	v1.GET("tokens/:id/image.gif", svc.showNFTImage)
-	v1.GET("tokens/:id/image.png", svc.showNFTImage)
-	v1.GET("tokens/:id/image.jpg", svc.showNFTImage)
-	v1.GET("tokens/:id/image.jpeg", svc.showNFTImage)
 	v1.GET("tokens/:id/media", svc.showNFTMedia)
 
 	v1.GET("nfts/:id", svc.showNFT)
 	v1.GET("nfts/:id/image", svc.showNFTImage)
-	v1.GET("nfts/:id/image.gif", svc.showNFTImage)
-	v1.GET("nfts/:id/image.png", svc.showNFTImage)
-	v1.GET("nfts/:id/image.jpg", svc.showNFTImage)
-	v1.GET("nfts/:id/image.jpeg", svc.showNFTImage)
 	v1.GET("nfts/:id/media", svc.showNFTMedia)
 
 	r.NoRoute(func(c *gin.Context) {
@@ -91,10 +85,6 @@ func (svc *HttpService) Start() error {
 	})
 
 	return r.Run(fmt.Sprintf(":%v", svc.Port))
-}
-
-type Pong struct {
-	Message string `json:"message"`
 }
 
 // @Summary Ping liquify service
@@ -180,13 +170,9 @@ func (svc *HttpService) paramErr(c *gin.Context, err error) {
 	})
 }
 
-// TODO Replace with placeholder image
 func (svc *HttpService) mediaError(c *gin.Context, err error) {
 	log.Printf("Media Err: %s", err)
 
-	c.Header("Cache-Control", "public, max=age=60") //Stop flooding
+	c.Header("Cache-Control", "public, max=age=60")
 	c.Data(200, "image/jpeg", svc.defaultImage)
-	//c.JSON(200, gin.H{
-	//	"error": err.Error(),
-	//})
 }

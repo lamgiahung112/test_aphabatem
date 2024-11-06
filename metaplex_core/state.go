@@ -12,7 +12,7 @@ type Asset struct {
 	UpdateAuthority solana.PublicKey `bin:"optional"`
 	Name            string
 	Uri             string
-	Seq             []uint64 `bin:"optional"`
+	Seq             []uint64		 `bin:"optional"`
 }
 
 func (asset *Asset) UnmarshalWithDecoder(dec *bin.Decoder) (err error) {

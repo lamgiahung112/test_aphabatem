@@ -4,30 +4,29 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	nft_proxy "github.com/alphabatem/nft-proxy"
-	"github.com/babilu-online/common/context"
-	"github.com/gagliardetto/solana-go"
-	"github.com/gin-gonic/gin"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/babilu-online/common/context"
+	"github.com/gagliardetto/solana-go"
+	"github.com/gin-gonic/gin"
+
+	nft_proxy "github.com/alphabatem/nft-proxy"
 )
 
 type ImageService struct {
 	context.DefaultService
-
 	defaultSize int
+	httpMedia 	*http.Client
+	solSvc		*SolanaImageService
+	resize 		*ResizeService
+	sql    		*SqliteService
 
-	httpMedia *http.Client
-
-	solSvc *SolanaImageService
-	resize *ResizeService
-	sql    *SqliteService
-
-	exemptImages map[string]struct{} //Some older & core tokens dont have active metadata so we shouldn't update them
+	exemptImages map[string]struct{} // For backward-compatibility with tokens without active metadata
 }
 
 const IMG_SVC = "img_svc"
@@ -82,16 +81,14 @@ func (svc *ImageService) ImageFile(c *gin.Context, key string) error {
 	}
 
 	cacheName := fmt.Sprintf("./cache/solana/%s.%s", media.Mint, media.ImageType)
-
-	//Check for file or fetch
 	ifo, err := os.Stat(cacheName)
-	if err != nil || ifo.Size() == 0 { //Missing cached image
+	isMissingCachedImage := err != nil || ifo.Size() == 0
+	if isMissingCachedImage {
 		err := svc.fetchMissingImage(media, cacheName)
 		if err != nil {
 			return err
 		}
 	}
-	//log.Printf("Using cached file: %s", cacheName)
 
 	return svc.writeFile(c, cacheName, media)
 }
@@ -104,7 +101,6 @@ func (svc *ImageService) ClearCache(key string) error {
 
 	_, exempt := svc.exemptImages[key]
 	if exempt {
-		//return errors.New("cache recently cleared")
 		return nil
 	}
 
@@ -130,9 +126,10 @@ func (svc *ImageService) writeFile(c *gin.Context, path string, media *nft_proxy
 		modTime = ifo.ModTime()
 	}
 
+	dateFormatLayoutExample := "Mon, 02 Jan 2006 15:04:05 GMT"
 	c.Header("Cache-Control", "public, max=age=172800")
 	c.Header("Vary", "Accept-Encoding")
-	c.Header("Last-Modified", modTime.Format("Mon, 02 Jan 2006 15:04:05 GMT")) //Mon, 03 Jun 2020 11:35:28 GMT
+	c.Header("Last-Modified", modTime.Format(dateFormatLayoutExample))
 	c.Header("Content-Type", fmt.Sprintf("image/%s", media.ImageType))
 
 	_, err = io.Copy(c.Writer, file)
@@ -200,7 +197,6 @@ func (svc *ImageService) fetchMissingImage(media *nft_proxy.Media, cacheName str
 	}
 	defer output.Close()
 
-	//log.Printf("Resizing file: %s", cacheName)
 	err = svc.resize.Resize(data, output, svc.defaultSize)
 	if err != nil {
 		return err
@@ -227,7 +223,6 @@ func (svc *ImageService) MediaFile(c *gin.Context, key string) error {
 		return err
 	}
 
-	//Write our data
 	c.Header("Cache-Control", "public, max-age=31536000")
 	c.Header("Expires", time.Now().AddDate(0, 1, 0).Format(http.TimeFormat))
 	c.Header("Content-Type", media.MediaType)

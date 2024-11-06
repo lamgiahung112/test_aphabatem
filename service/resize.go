@@ -2,26 +2,26 @@ package services
 
 import (
 	"bytes"
-	"github.com/babilu-online/common/context"
-	"github.com/nfnt/resize"
-	"golang.org/x/image/draw"
 	"image"
 	"image/color/palette"
 	"image/gif"
 	"log"
-
-	_ "golang.org/x/image/vp8"
-	_ "golang.org/x/image/webp"
 	"image/jpeg"
 	"image/png"
 	"io"
+
+	_ "golang.org/x/image/vp8"
+	_ "golang.org/x/image/webp"
+	"github.com/babilu-online/common/context"
+	"github.com/nfnt/resize"
+	"golang.org/x/image/draw"
 )
+
+const RESIZE_SVC = "resize_svc"
 
 type ResizeService struct {
 	context.DefaultService
 }
-
-const RESIZE_SVC = "resize_svc"
 
 func (svc ResizeService) Id() string {
 	return RESIZE_SVC
@@ -46,7 +46,6 @@ func (svc *ResizeService) Resize(data []byte, out io.Writer, size int) error {
 		return gif.EncodeAll(out, g2)
 	}
 
-	// Resize:
 	dst := resize.Resize(0, uint(size), src, resize.MitchellNetravali)
 
 	switch typ {
@@ -74,14 +73,13 @@ func (svc *ResizeService) resizeGif(data []byte, width, height int) (*gif.GIF, e
 		height = int(width * im.Config.Height / im.Config.Width)
 	}
 
-	// reset the gif width and height
 	im.Config.Width = width
 	im.Config.Height = height
 
 	firstFrame := im.Image[0].Bounds()
 	img := image.NewRGBA(image.Rect(0, 0, firstFrame.Dx(), firstFrame.Dy()))
 
-	// resize frame by frame
+	// resize all frames
 	for index, frame := range im.Image {
 		b := frame.Bounds()
 		draw.Draw(img, b, frame, b.Min, draw.Over)
